@@ -1,6 +1,6 @@
 <?php
 
-//Михаил, доработал Ваш запрос:
+//Михаил, доработал Ваш запрос (№ 1):
 
 $sql = "
 SELECT 
@@ -176,7 +176,7 @@ Array
 //--------------------------------------------------------------------
 
 
-//Доработал свой запрос, упростил:
+//Доработал свой запрос, упростил (№ 2):
 
 $sql = "
 SELECT 
@@ -259,8 +259,50 @@ Array
 
 
 
+
+
 // На последок, если человек 
 Указал диапазон цен товаров
 Выбрал 2 вариации товаров
 
-Надо показать остальные фильтры и количества. Не могу догнать, куда это вставить ?
+Надо показать остальные фильтры и количества. 
+
+Ваш запрос, Михаил (№ 3):
+
+$sql = "
+SELECT 
+	`shop_filters`.`name` AS `filter_name`,
+	`shop_filters_params`.`parent_id` AS `filter_id`,
+	`shop_filters_params`.`name`,
+	`shop_filters_params`.`num_key`,
+	`shop_filters_params`.`id`,
+	`shop_filters_products`.`product_count`
+FROM `shop_filters_params` 
+INNER JOIN `shop_filters` ON `shop_filters`.`num_id` = `shop_filters_params`.`parent_id`
+LEFT JOIN (
+	SELECT 
+		`shop_filters_products`.`filter_id`,
+		COUNT(`shop_filters_products`.`product_id`) AS product_count
+	FROM `shop_filters_products` 
+	INNER JOIN `shop_products` ON `shop_products`.`id` = `shop_filters_products`.`product_id`
+	WHERE
+		`shop_products`.`price` BETWEEN 100 AND 31000 AND 
+		`shop_filters_products`.`product_id` IN (
+            SELECT `shop_filters_products`.`product_id`
+            FROM `shop_filters_products`
+            WHERE `shop_filters_products`.`filter_id` IN (14, 8)
+            GROUP BY `shop_filters_products`.`product_id`
+            HAVING COUNT(DISTINCT `shop_filters_products`.`filter_id`) = 2
+        )
+	
+	GROUP BY `shop_filters_products`.`filter_id`
+
+) AS `shop_filters_products` ON `shop_filters_products`.`filter_id` = `shop_filters_params`.`num_key`
+WHERE 
+	`shop_filters`.`lang` = '1' AND 
+	`shop_filters_params`.`lang` = '1'
+	HAVING `shop_filters_products`.`product_count` != 0
+";
+
+
+Очень хочу в мой запрос (№ 2) это внедрить. Условия диапазона цены и 2 вариации фильтра. Не могу догнать, куда это вставить ?
