@@ -266,7 +266,6 @@ Array
 Выбрал 2 вариации товаров
 
 Надо показать остальные фильтры и количества. 
-
 Ваш запрос, Михаил (№ 3):
 
 $sql = "
@@ -305,4 +304,63 @@ WHERE
 ";
 
 
-Очень хочу в мой запрос (№ 2) это внедрить. Условия диапазона цены и 2 вариации фильтра. Не могу догнать, куда это вставить ?
+Очень хочу в мой запрос (№ 2) это внедрить. Условия диапазона цены и 2 вариации фильтра.
+Условия стоит, если товаров 0, мы имя опции фильтра ее ID и количество не выводим, с помощью CASE. 
+Или можно это улучшить ??? Данных будет очень много в БД, пару лимонов товаров в одной категории. 
+
+$sql = "
+SELECT 
+    shop_filters.name AS attribute_name,
+    shop_filters.sort, 
+    GROUP_CONCAT(
+        CASE
+            WHEN shop_filters_products_count.product_count > 0 THEN shop_filters_params.name
+            ELSE NULL
+        END ORDER BY shop_filters_params.id ASC
+    ) AS value,
+    GROUP_CONCAT(
+        CASE
+            WHEN shop_filters_products_count.product_count > 0 THEN shop_filters_params.num_key
+            ELSE NULL
+        END ORDER BY shop_filters_params.id ASC
+    ) AS num_id,
+    GROUP_CONCAT(
+        CASE
+            WHEN shop_filters_products_count.product_count > 0 THEN shop_filters_products_count.product_count
+            ELSE NULL
+        END ORDER BY shop_filters_params.id ASC
+    ) AS product_count
+FROM 
+    shop_filters
+JOIN 
+    shop_filters_params ON shop_filters.num_id = shop_filters_params.parent_id
+LEFT JOIN (
+    SELECT 
+        shop_filters_products.filter_id,
+        COUNT(shop_filters_products.product_id) AS product_count
+    FROM 
+        shop_filters_products
+    INNER JOIN shop_products ON shop_products.id = shop_filters_products.product_id
+    WHERE
+        shop_products.price BETWEEN 100 AND 8000 AND
+        shop_filters_products.product_id IN (
+            SELECT sfp1.product_id
+            FROM shop_filters_products sfp1
+            WHERE sfp1.filter_id IN (14, 8)
+            GROUP BY sfp1.product_id
+            HAVING COUNT(DISTINCT sfp1.filter_id) = 2
+        )
+    GROUP BY 
+        shop_filters_products.filter_id
+) AS shop_filters_products_count ON shop_filters_params.num_key = shop_filters_products_count.filter_id
+WHERE 
+    shop_filters.cat_id = '1' AND 
+    shop_filters.lang = '1' AND
+    shop_filters_params.lang = '1'
+GROUP BY 
+    shop_filters.num_id,  
+    shop_filters.name, 
+    shop_filters.sort
+ORDER BY 
+    shop_filters.sort;
+";
