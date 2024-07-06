@@ -364,3 +364,71 @@ GROUP BY
 ORDER BY 
     shop_filters.sort;
 ";
+
+
+
+
+------------
+
+ЗАПРОС на выборку, если выбрано вариации и диапазон цен (работает быстрее через WITH):
+
+WITH filtered_products AS (
+    SELECT DISTINCT sfp.product_id
+    FROM shop_filters_products sfp
+    WHERE sfp.filter_id IN (14, 8)
+),
+filters_products_count AS (
+    SELECT 
+        sfp.filter_id,
+        COUNT(sfp.product_id) AS product_count
+    FROM 
+        shop_filters_products sfp
+    JOIN shop_products sp ON sp.id = sfp.product_id
+    WHERE 
+        sp.price BETWEEN 100 AND 8000
+        AND EXISTS (
+            SELECT 1
+            FROM filtered_products fp
+            WHERE fp.product_id = sfp.product_id
+        )
+    GROUP BY 
+        sfp.filter_id
+)
+SELECT 
+    sf.name AS attribute_name,
+    sf.sort, 
+    GROUP_CONCAT(
+        CASE
+            WHEN fpc.product_count > 0 THEN sfp.name
+            ELSE NULL
+        END ORDER BY sfp.id ASC
+    ) AS value,
+    GROUP_CONCAT(
+        CASE
+            WHEN fpc.product_count > 0 THEN sfp.num_key
+            ELSE NULL
+        END ORDER BY sfp.id ASC
+    ) AS num_id,
+    GROUP_CONCAT(
+        CASE
+            WHEN fpc.product_count > 0 THEN fpc.product_count
+            ELSE NULL
+        END ORDER BY sfp.id ASC
+    ) AS product_count
+FROM 
+    shop_filters sf
+JOIN 
+    shop_filters_params sfp ON sf.num_id = sfp.parent_id
+LEFT JOIN 
+    filters_products_count fpc ON sfp.num_key = fpc.filter_id
+WHERE 
+    sf.cat_id = '1' 
+    AND sf.lang = '1' 
+    AND sfp.lang = '1'
+GROUP BY 
+    sf.num_id,  
+    sf.name, 
+    sf.sort
+ORDER BY 
+    sf.sort;
+
